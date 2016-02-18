@@ -41,6 +41,14 @@ class RubocopTask(val module: Module, val paths: List<String>) : Task.Background
         sdk?.homeDirectory?.parent?.canonicalPath
     }
 
+    val installedInSdk: Boolean by lazy {
+        GemSearchUtil.findGem(sdk, "rubocop") != null
+    }
+
+    val installedInBundle: Boolean by lazy {
+        GemSearchUtil.findGem(module, "rubocop") != null
+    }
+
     override fun run(indicator: ProgressIndicator) {
         run()
     }
@@ -53,7 +61,7 @@ class RubocopTask(val module: Module, val paths: List<String>) : Task.Background
             return
         }
 
-        if (GemSearchUtil.findGem(module, "rubocop") == null) {
+        if (!installedInSdk && !installedInBundle) {
             logger.warn("Didn't find rubocop gem")
             return
         }
@@ -166,8 +174,11 @@ class RubocopTask(val module: Module, val paths: List<String>) : Task.Background
         val sudo = false
 
         val commandLine = runner.createAndSetupCmdLine(workDirectory.canonicalPath!!, null, true, command, sdk, sudo, *args)
-        val preprocessor = BundlerUtil.createBundlerPreprocessor(module, sdk)
-        preprocessor.preprocess(commandLine)
+
+        if (installedInBundle) {
+            val preprocessor = BundlerUtil.createBundlerPreprocessor(module, sdk)
+            preprocessor.preprocess(commandLine)
+        }
 
         logger.debug("Executing RuboCop (SDK=%s)".format(sdkRoot), commandLine.commandLineString)
 
